@@ -1,12 +1,20 @@
-from PIL import Image
+import json
+import os
+import sys
+import time
+from io import BytesIO
 
+from PIL import Image
 # Typing
+from django.core.files.uploadedfile import InMemoryUploadedFile
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from image_uploader.backend.models import ImageRegion
 from image_uploader.backend.models import ImageWithMetadata
+from image_uploader.backend.models import Metadata
 
 
-def _crop_image(url, x, y, width, height):
+def _crop_image(url, x, y, x2, y2):
     """
     Use PIL to crop the given subimage
     :param url:
@@ -17,41 +25,52 @@ def _crop_image(url, x, y, width, height):
     :return:
     """
     pil_image = Image.open(url)
-    return pil_image.crop((x, y, x + width, y + height))
+    return pil_image.crop((x, y, x2, y2))
 
 
-def _create_crop(img_id, coords, metadata):
+def _create_crop(img, coords, metadata):
     """
     Create a crop for the given image.
     That crop is defined by coords and have to store the metadata information
 
-    :param img_id:
+    :param img:
     :param coords:
     :param metadata:
     :return:
     """
-    # Business code; Crop the source image using the passed coordinates
-    from image_uploader.backend.models import ImageWithMetadata
-    img = ImageWithMetadata.objects.get(id=img_id)
-
+    print(coords)
     crop = _crop_image(
-        img.image.url,
+        img.image.path,
         coords['x'],
         coords['y'],
-        coords['width'],
-        coords['height']
+        coords['x2'],
+        coords['y2']
     )
 
-    # Now that we've got a crop we can create all the instances in DB
-    from image_uploader.backend.models import Metadata
-    metadata = Metadata.objects.create(gender=metadata.get('gender'))
+    tmp = BytesIO()
+    crop.save(tmp, format='PNG')  # loseless format
+    new_name = "{}_{}{}".format(
+        img.image.name,
+        time.time(),
+        '.png'
+    )
 
-    from image_uploader.backend.models import ImageRegion
+    in_memory_crop = InMemoryUploadedFile(
+        tmp,
+        None,
+        new_name,
+        'image/png',
+        sys.getsizeof(tmp),
+        None
+    )
+    # Now that we've got a crop we can create all the instances in DB
+    metadata = Metadata.objects.create(gender=metadata.get('gender'))
     image_region = ImageRegion.objects.create(
-        image=crop,
+        image=in_memory_crop,
         src_image=img,
         metadata=metadata
     )
+    image_region.save()
     return image_region
 
 
@@ -91,13 +110,17 @@ def crop(request: HttpRequest) -> JsonResponse:
     :param request:
     :return:
     """
+
+    post_data = json.loads(request.body)
+    print(post_data)
     # This should hold some kind of param validation.
     # For this snippet we'll assume that this input is correct
-    img_id = request.POST.get('id')
-    coords = request.POST.get('coords')
-    metadata = request.POST.get('metadata')
+    img_id = post_data.get('id')
+    coords = post_data.get('coords')
+    metadata = post_data.get('metadata', {})
 
-    image_region = _create_crop(img_id, coords, metadata)
+    img = ImageWithMetadata.objects.get(id=img_id)
+    image_region = _create_crop(img, coords, metadata)
 
     response = {
         "id": image_region.id,
@@ -127,9 +150,10 @@ def get_images(request: HttpRequest) -> JsonResponse:
     images = []
     for image in qs:
         serialized_image = {
-            "image": image.image.url,
+            "id": image.id,
+            "image": request.build_absolute_uri(image.image.url),
             "crops": [
-                crop_instance.serialize()
+                crop_instance.serialize(uri_builder=request.build_absolute_uri)
                 for crop_instance in image.imageregion_set.all()
             ]
         }

@@ -8,6 +8,7 @@ function updateImages() {
                 images.push(buildImageElement(image));
             }
 
+            $("#image-list").empty();
             // Update the list
             $("#image-list").append(images);
         }
@@ -22,14 +23,33 @@ function buildImageElement(image) {
         );
     }
 
-    return $("div").append(crops);
+    let elementImage = $("<img />").attr("src", image.image)
+                        .css('max-width', '180px')
+                        .css('max-height', '180px');
+    return $("<div></div>").append(elementImage)
+        .addClass("image-container")
+        .append(crops)
+        .click(getCropperBuilder(image));
 }
 
 function buildCropElement(crop) {
+    let cropImage = $("<img />")
+        .attr("src", crop.image)
+        .css('max-width', '180px')
+        .css('max-height', '180px');
+    return $("<div></div>")
+        .addClass("image-container")
+        .append($("<span></span>").text(crop.metadata))
+        .append(cropImage);
+}
 
-    return $("div").append(
-        $("span").text(crop.metadata)
-    ).append(
-        $("img").attr("src", crop.image)
-    );
+function getCropperBuilder(image) {
+    return function() {
+        window.cropperController.clean();
+        window.cropperController.setImage(image);
+
+        // Mark default woman
+        $("#female-gender").attr("checked", true);
+        window.cropperController.setGender('f');
+    };
 }

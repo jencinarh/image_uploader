@@ -64,9 +64,13 @@ class ImageRegion(models.Model):
     # should occur if its image is still alive.
     metadata = models.OneToOneField(Metadata, on_delete=models.PROTECT)
 
-    def serialize(self):
+    def serialize(self, uri_builder=None):
+        def by_pass_uri(uri):
+            return uri
+        uri_builder = uri_builder or by_pass_uri
+
         return {
             'id': self.id,
-            'image': self.image.url,
+            'image': uri_builder(self.image.url),
             'metadata': self.metadata.serialize()
         }
