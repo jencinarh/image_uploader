@@ -38,6 +38,12 @@ class Metadata(models.Model):
     # Different attributes we want to store for every single Image
     gender = models.CharField(max_length=1, choices=Gender.choices)
 
+    def serialize(self):
+        value_to_label_map = dict(zip(Gender.values, Gender.labels))
+        return {
+            'gender': (self.gender, value_to_label_map.get(self.gender))
+        }
+
 
 class ImageRegion(models.Model):
     """
@@ -58,3 +64,9 @@ class ImageRegion(models.Model):
     # should occur if its image is still alive.
     metadata = models.OneToOneField(Metadata, on_delete=models.PROTECT)
 
+    def serialize(self):
+        return {
+            'id': self.id,
+            'image': self.image.url,
+            'metadata': self.metadata.serialize()
+        }

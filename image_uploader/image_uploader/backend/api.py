@@ -3,6 +3,8 @@ from PIL import Image
 # Typing
 from django.http import HttpRequest, HttpResponse, JsonResponse
 
+from image_uploader.backend.models import ImageWithMetadata
+
 
 def _crop_image(url, x, y, width, height):
     """
@@ -65,7 +67,6 @@ def upload(request: HttpRequest) -> HttpResponse:
     :return:
     """
     f = request.FILES['file']
-    # TODO Create the in-memory file
 
     # Create an image with no crops in there
     from image_uploader.backend.models import ImageWithMetadata
@@ -82,7 +83,7 @@ def upload(request: HttpRequest) -> HttpResponse:
     )
 
 
-def crop(request: HttpRequest) -> HttpResponse:
+def crop(request: HttpRequest) -> JsonResponse:
     """
     Crop the requested image and save a bound image with its metadata to the
     src image
@@ -103,6 +104,38 @@ def crop(request: HttpRequest) -> HttpResponse:
         "srcImage": img_id,
 
     }
+    return JsonResponse(
+        response,
+        status=200
+    )
+
+
+def get_images(request: HttpRequest) -> JsonResponse:
+    """
+    Get all the images to list them and its crops in the website
+    :param request:
+    :return:
+    """
+    qs = ImageWithMetadata.objects.prefetch_related(
+        "imageregion_set",
+        "imageregion_set__metadata"
+    )
+
+    response = {
+        "images": None
+    }
+    images = []
+    for image in qs:
+        serialized_image = {
+            "image": image.image.url,
+            "crops": [
+                crop_instance.serialize()
+                for crop_instance in image.imageregion_set.all()
+            ]
+        }
+        images.append(serialized_image)
+
+    response['images'] = images
     return JsonResponse(
         response,
         status=200

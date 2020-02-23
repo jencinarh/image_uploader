@@ -27,7 +27,7 @@
 
         <h3 style="margin-top: 50px;">Image cropper</h3>
         <!-- Image cropper -->
-        <div id="image-cropper" >
+        <div id="image-cropper">
             <img id="preview" src="http://placehold.it/180"
                  alt="crop preview" style="max-width: 180px;max-height: 240px"/>
             <input id="crop-buton" type="button" value="Crop image"/>
@@ -46,6 +46,7 @@
         integrity="sha256-CSXorXvZcTkaix6Yvo6HppcZGetbYMGWSFlBw8HfCJo="
         crossorigin="anonymous"></script>
 <script src="static/js/jquery.Jcrop.js"></script>
+<script src="static/js/utils.js"></script>
 
 <script>
     $(document).ready(
@@ -85,9 +86,9 @@
                     alert("No image selected");
                     return;
                 }
+
                 let form = new FormData();
-                console.log(file);
-                form.append('file', file);
+                form.append('file', file, file.name);
 
                 console.log(form);
                 let ajaxConfig = {
@@ -96,12 +97,13 @@
                     enctype: 'multipart/form-data',
                     data: form,
                     processData: false,
-                    contentype: false
+                    contentType: false
                 };
-                $.ajax(ajaxConfig).done(function(response) {
-                    console.log("Answered received", response);
+                $.ajax(ajaxConfig).done(function (response) {
+                    updateImages();
                 });
             });
+
         }
     );
 
