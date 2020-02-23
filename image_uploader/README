@@ -1,0 +1,48 @@
+There were two main tasks to accomplish with this example:
+    1- Loading Images
+    2- Create crops from these images and binding some metadata
+
+1- Loading Images
+Django has its own built-in tools to save images to models. That was the main
+focus in this code.
+
+Receiving an upload post request and saving that file in memory before saving it
+to its final location.
+This main image should be saved in order to create the crops in a latter stage
+
+
+2- Creating crops
+From front to back the expected workflow was:
+    1- The user selects an already uploaded file ( Maybe this could be just one
+       step when selecting the crops )
+    2- Selects the image region that must be cropped and introduces the gender
+    3- Posts the selection to the server to do the work.
+    4- The server crops the source image in the requested positions
+    5- The crop is finally saved in both the FS and DB creating the relation
+       with the source image and its metadata
+
+The stack chosen to do all the work was:
+Frontend:
+    - Jquery
+    - Jcrop (http://deepliquid.com/content/Jcrop.html)
+
+I've avoided using angular as this was not intended to be a frontend developer
+test.
+
+
+Backend:
+    - Nginx
+    - uwsgi
+    - Django 3
+    - Python 3
+    - PIL (Pillow in PIP)
+    - mysqlclient
+
+The main drawback of this selection is that I've decided not to do async
+development that could potentially improve the performance of tasks due to the
+limited time I had to implement the solution.
+
+The other key decision was not to save the metadata in the image file itself
+leading to separate metadata from its data.
+However, as far as the DB integrity and file backups are kept, this should not
+be a real issue.
